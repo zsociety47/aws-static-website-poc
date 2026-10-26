@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Not Found | Zeon Stewart</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(-45deg, #0078d4, #00bcf2, #00182b, #004b87);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            color: #333;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            body { animation: none; }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            width: min(360px, 85vw);
+        }
+
+        .code { font-size: 4em; font-weight: 700; color: #0078d4; margin: 0; line-height: 1; }
+
+        h1 { color: #333; margin: 12px 0 8px; font-size: 1.4em; }
+
+        .note { font-size: 0.9em; color: #666; }
+
+        .btn {
+            display: block;
+            padding: 12px;
+            margin: 20px 0 0;
+            border-radius: 8px;
+            background-color: #0078d4;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .btn:hover,
+        .btn:focus-visible {
+            background-color: #005a9e;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <p class="code">404</p>
+        <h1>This page drifted off into the cloud ☁️</h1>
+        <p class="note">The page you asked for doesn't exist. CloudFront serves this custom error page.</p>
+        <a class="btn" href="/">Back to the home page</a>
+        <a class="btn" href="projects.html">Azure project list</a>
+    </main>
+</body>
+</html>

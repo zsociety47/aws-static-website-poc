@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zeon Stewart | Azure projects</title>
+    <meta name="description" content="The Azure proofs of concept, with a link for every finished piece: GitHub, walkthrough video, click-through guide, LinkedIn, and the live site when there is one.">
+    <style>
+        :root {
+            --blue: #0078d4;
+            --blue-dark: #005a9e;
+            --ink: #1b2733;
+            --muted: #566573;
+            --line: #e3e8ee;
+            --card: rgba(255, 255, 255, 0.96);
+            --good: #107c10;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 32px 16px 48px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            background: linear-gradient(-45deg, #0078d4, #00bcf2, #00182b, #004b87);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            color: var(--ink);
+        }
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @media (prefers-reduced-motion: reduce) { body { animation: none; } }
+        .card {
+            background: var(--card);
+            padding: 36px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            width: min(920px, 100%);
+            height: fit-content;
+        }
+        header { text-align: center; }
+        h1 { color: var(--blue); margin: 0 0 6px; font-size: clamp(1.6rem, 4vw, 2.1rem); }
+        .subtitle { color: #555; font-weight: 600; margin: 0 0 8px; }
+        .note { font-size: 0.92em; color: var(--muted); margin: 0 auto 8px; max-width: 62ch; }
+        h2 { font-size: 1.05rem; margin: 28px 0 10px; }
+        .projects { display: grid; gap: 12px; }
+        .project-card {
+            border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; background: #fff;
+        }
+        .project-card h3 { margin: 0 0 4px; font-size: 1.05rem; }
+        .blurb { font-size: 0.9rem; color: var(--muted); margin: 0 0 10px; }
+        .badges { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+        .badge {
+            font-size: 0.66rem; border-radius: 99px; padding: 0 7px; border: 1px solid var(--line);
+            color: var(--muted); white-space: nowrap; text-decoration: none;
+        }
+        .badge.on { color: #fff; background: var(--good); border-color: var(--good); }
+        a.badge.on:hover, a.badge.on:focus-visible { filter: brightness(0.92); }
+        .badge.skip { text-decoration: line-through; opacity: 0.55; }
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+        .chip, a.chip {
+            font-size: 0.8rem; border: 1px solid var(--line); border-radius: 99px; padding: 4px 11px;
+            color: var(--blue-dark); text-decoration: none; background: #f4f8fc;
+        }
+        a.chip:hover, a.chip:focus-visible { background: #e8f2fb; }
+        .chip.off { color: var(--muted); background: #f6f7f9; }
+        .btn {
+            display: inline-block; padding: 10px 16px; border-radius: 8px; background-color: var(--blue);
+            color: #fff; font-size: 15px; font-weight: 600; text-decoration: none; margin-top: 8px;
+        }
+        .btn:hover, .btn:focus-visible { background-color: var(--blue-dark); }
+        .fineprint { font-size: 0.8rem; color: var(--muted); margin-top: 22px; text-align: center; }
+        #error { display: none; border: 1px solid #b45309; color: #b45309; border-radius: 10px; padding: 10px 14px; margin-top: 18px; }
+        @media (max-width: 560px) { .card { padding: 22px 16px; } }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <header>
+            <h1>Azure projects</h1>
+            <p class="subtitle">Built by Zeon Stewart</p>
+            <p class="note">Each row is one proof of concept. A finished piece has a link: GitHub for the code, Loom for the walkthrough, the Google Doc for the click-through guide, LinkedIn when those posts are live, and the public site when there is one.</p>
+            <a class="btn" href="index.html">Back to the tracker</a>
+        </header>
+
+        <div id="error" role="alert">The project list could not load. Refresh, or see the repos on GitHub.</div>
+
+        <h2>The seven Azure builds</h2>
+        <div class="projects" id="catalog"></div>
+
+        <p class="fineprint">Guides open as Google Docs. The public copy of every click is also in that project's GitHub README. Data updated <span id="updated">–</span>.</p>
+    </main>
+    <script>
+    (function () {
+        'use strict';
+        function parse(s) { var p = s.split('-'); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
+        function fmtY(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }); }
+        function el(id) { return document.getElementById(id); }
+        function isDone(v) { return v && v !== 'planned' && v !== 'skip'; }
+
+        fetch('progress.json', { cache: 'no-cache' })
+            .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+            .then(render)
+            .catch(function (e) { if (window.console) console.error(e); el('error').style.display = 'block'; });
+
+        function badge(label, v, href) {
+            var done = isDone(v);
+            var b = (href && done) ? document.createElement('a') : document.createElement('span');
+            if (b.tagName === 'A') { b.href = href; b.target = '_blank'; b.rel = 'noopener noreferrer'; }
+            b.className = 'badge' + (v === 'skip' ? ' skip' : (done ? ' on' : ''));
+            b.textContent = label;
+            b.title = label + (done ? (href ? ': open' : ': done') : (v === 'skip' ? ': not planned' : ': planned'));
+            return b;
+        }
+
+        function chip(label, href) {
+            if (!href) {
+                var s = document.createElement('span');
+                s.className = 'chip off';
+                s.textContent = label + ' — not yet';
+                return s;
+            }
+            var a = document.createElement('a');
+            a.className = 'chip';
+            a.href = href;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.textContent = label;
+            return a;
+        }
+
+        function render(data) {
+            var box = el('catalog');
+            var list = data.items.filter(function (i) { return i.catalog; }).sort(function (a, b) { return (a.n || 0) - (b.n || 0); });
+            list.forEach(function (i) {
+                var L = i.links || {};
+                var card = document.createElement('article');
+                card.className = 'project-card';
+                var h = document.createElement('h3');
+                h.textContent = i.name;
+                card.appendChild(h);
+                if (i.blurb) {
+                    var p = document.createElement('p');
+                    p.className = 'blurb';
+                    p.textContent = i.blurb;
+                    card.appendChild(p);
+                }
+                var bs = document.createElement('div');
+                bs.className = 'badges';
+                bs.appendChild(badge('Built', i.built, L.github));
+                bs.appendChild(badge('Video', i.video, L.video));
+                bs.appendChild(badge('Posts', i.posts, L.linkedin));
+                bs.appendChild(badge('Guide', i.doc, L.guide));
+                if (L.live) bs.appendChild(badge('Live', i.built, L.live));
+                card.appendChild(bs);
+                var chips = document.createElement('div');
+                chips.className = 'chips';
+                chips.appendChild(chip('GitHub repo', L.github));
+                chips.appendChild(chip('Walkthrough video', isDone(i.video) ? L.video : ''));
+                chips.appendChild(chip('Click-through guide', isDone(i.doc) ? L.guide : ''));
+                chips.appendChild(chip('LinkedIn', isDone(i.posts) ? L.linkedin : ''));
+                if (L.live) chips.appendChild(chip('Live site', L.live));
+                card.appendChild(chips);
+                box.appendChild(card);
+            });
+            el('updated').textContent = fmtY(parse(data.updated));
+        }
+    })();
+    </script>
+</body>
+</html>

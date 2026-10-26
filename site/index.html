@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zeon Stewart | Cloud Build Tracker</title>
+    <meta name="description" content="A live, plain-HTML tracker of my cloud projects: what is done, what is next, and whether I am on pace. Hosted on Amazon Web Services, from a private Simple Storage Service (S3) bucket through CloudFront.">
+    <style>
+        :root {
+            --blue: #0078d4;
+            --blue-dark: #005a9e;
+            --ink: #1b2733;
+            --muted: #566573;
+            --line: #e3e8ee;
+            --card: rgba(255, 255, 255, 0.96);
+            --planned: #8a97a6;
+            --actual: #0078d4;
+            --good: #107c10;
+            --warn: #b45309;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 32px 16px 48px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            background: linear-gradient(-45deg, #0078d4, #00bcf2, #00182b, #004b87);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            color: var(--ink);
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            body { animation: none; }
+            .btn, .bar-fill { transition: none; }
+        }
+
+        .card {
+            background: var(--card);
+            padding: 36px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            width: min(920px, 100%);
+            height: fit-content;
+        }
+
+        header { text-align: center; }
+        h1 { color: var(--blue); margin: 0 0 6px; font-size: clamp(1.6rem, 4vw, 2.1rem); }
+        .subtitle { color: #555; font-weight: 600; margin: 0 0 8px; }
+        .note { font-size: 0.92em; color: var(--muted); margin: 0 auto; max-width: 60ch; }
+
+        h2 { font-size: 1.05rem; margin: 28px 0 10px; color: var(--ink); }
+
+        hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-top: 22px;
+        }
+        .stat {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 12px 14px;
+            background: #fff;
+        }
+        .stat .label { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+        .stat .value { font-size: 1.5rem; font-weight: 700; margin-top: 2px; }
+        .stat .sub { font-size: 0.8rem; color: var(--muted); }
+        .ahead { color: var(--good); }
+        .behind { color: var(--warn); }
+
+        .chart-wrap { border: 1px solid var(--line); border-radius: 12px; background: #fff; padding: 10px 10px 4px; }
+        svg { width: 100%; height: auto; display: block; }
+        .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); padding: 4px 8px 10px; }
+        .swatch { display: inline-block; width: 22px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 6px; }
+        .swatch.planned { border-top-style: dashed; border-color: var(--planned); }
+        .swatch.actual { border-color: var(--actual); }
+
+        .bars { display: grid; gap: 12px; }
+        .bar-row { display: grid; grid-template-columns: 130px 1fr 70px; gap: 12px; align-items: center; font-size: 0.9rem; }
+        .bar { height: 12px; background: #e9eef4; border-radius: 99px; overflow: hidden; }
+        .bar-fill { height: 100%; background: var(--blue); border-radius: 99px; transition: width 0.4s ease; }
+        .bar-count { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+        ul.list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+        ul.list li {
+            display: grid; grid-template-columns: 90px 1fr auto; gap: 10px; align-items: baseline;
+            padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 0.92rem;
+        }
+        .date { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.85rem; }
+        .tag { font-size: 0.72rem; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; white-space: nowrap; }
+        .tag.now { color: #fff; background: var(--blue); border-color: var(--blue); }
+        .badges { display: inline-flex; gap: 4px; margin-left: 8px; vertical-align: middle; }
+        .badge { font-size: 0.66rem; border-radius: 99px; padding: 0 7px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; text-decoration: none; }
+        .badge.on { color: #fff; background: var(--good); border-color: var(--good); }
+        a.badge.on:hover, a.badge.on:focus-visible { filter: brightness(0.92); }
+        .badge.skip { text-decoration: line-through; opacity: 0.55; }
+        .projects { display: grid; gap: 10px; }
+        .project-card {
+            border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: #fff;
+        }
+        .project-card h3 { margin: 0 0 4px; font-size: 1rem; }
+        .project-card .blurb { font-size: 0.85rem; color: var(--muted); margin: 0 0 10px; }
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip, a.chip {
+            font-size: 0.78rem; border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px;
+            color: var(--blue-dark); text-decoration: none; background: #f4f8fc;
+        }
+        a.chip:hover, a.chip:focus-visible { background: #e8f2fb; }
+        .chip.off { color: var(--muted); background: #f6f7f9; }
+        .tag.done { color: var(--good); border-color: var(--good); }
+
+        .buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+        .btn {
+            display: block; padding: 12px; border-radius: 8px; background-color: var(--blue); color: #fff;
+            font-size: 16px; font-weight: 600; text-decoration: none; text-align: center;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .btn:hover, .btn:focus-visible { background-color: var(--blue-dark); transform: translateY(-2px); }
+
+        .fineprint { font-size: 0.8rem; color: var(--muted); margin-top: 18px; text-align: center; }
+        #error { display: none; border: 1px solid var(--warn); color: var(--warn); border-radius: 10px; padding: 10px 14px; margin-top: 18px; font-size: 0.9rem; }
+
+        @media (max-width: 560px) {
+            .card { padding: 22px 16px; }
+            .bar-row { grid-template-columns: 1fr 60px; }
+            .bar-row .bar { grid-column: 1 / -1; order: 3; }
+            ul.list li { grid-template-columns: 1fr auto; }
+            ul.list li .date { grid-column: 1 / -1; }
+        }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <header>
+            <h1>Hello from the Cloud ☁️</h1>
+            <p class="subtitle">Built and deployed by Zeon Stewart</p>
+            <p class="note">This page is served from a private Simple Storage Service (S3) bucket through CloudFront, with no web server to manage. It started as one static page and is now my live build tracker: what is finished, what is next, and whether I am on pace. Green badges that look like pills are links to the repo, the video, the posts, or the click-through guide.</p>
+        </header>
+
+        <div id="error" role="alert">The tracker data could not load. Refresh the page, or see the project list on GitHub.</div>
+
+        <section class="stats" aria-label="Summary">
+            <div class="stat"><div class="label">Finished</div><div class="value" id="s-done">–</div><div class="sub" id="s-done-sub">&nbsp;</div></div>
+            <div class="stat"><div class="label">Versus plan</div><div class="value" id="s-delta">–</div><div class="sub" id="s-delta-sub">&nbsp;</div></div>
+            <div class="stat"><div class="label">Pace</div><div class="value" id="s-pace">–</div><div class="sub">finished per week</div></div>
+            <div class="stat"><div class="label">Projected finish</div><div class="value" id="s-finish">–</div><div class="sub" id="s-finish-sub">at the current pace</div></div>
+        </section>
+
+        <h2>Pace chart</h2>
+        <div class="chart-wrap">
+            <svg id="chart" viewBox="0 0 760 320" role="img" aria-labelledby="chart-title chart-desc">
+                <title id="chart-title">Projects finished over time, planned versus actual</title>
+                <desc id="chart-desc">A step line chart. The dashed grey line is the plan; the solid blue line is what is actually finished.</desc>
+            </svg>
+            <div class="legend">
+                <span><span class="swatch planned"></span>Plan</span>
+                <span><span class="swatch actual"></span>Finished</span>
+            </div>
+        </div>
+
+        <h2>By track</h2>
+        <div class="bars" id="bars"></div>
+
+        <h2>This week and next</h2>
+        <ul class="list" id="upcoming"></ul>
+
+        <h2>Recently built</h2>
+        <ul class="list" id="recent"></ul>
+
+        <h2>Azure projects</h2>
+        <p class="note" style="text-align:left;margin:0 0 12px">The seven Azure proofs of concept. A green badge is a link. The longer list, with every artifact spelled out, is on the <a href="projects.html">projects page</a>.</p>
+        <div class="projects" id="catalog"></div>
+
+        <hr>
+
+        <nav class="buttons" aria-label="Links">
+            <a class="btn" href="projects.html">Project list</a>
+            <a class="btn" href="https://github.com/zsociety47" target="_blank" rel="noopener">GitHub Profile</a>
+            <a class="btn" href="https://www.linkedin.com/in/zeon-stewart-cloud-developer/" target="_blank" rel="noopener">LinkedIn Profile</a>
+            <a class="btn" href="Zeon_Stewart_Resume.pdf" target="_blank" rel="noopener">View Résumé</a>
+            <a class="btn" href="https://github.com/zsociety47/cloud-projects" target="_blank" rel="noopener">All Cloud Projects</a>
+        </nav>
+
+        <p class="fineprint" id="fine">Plan dates are targets, reviewed monthly. Data updated <span id="updated">–</span>.</p>
+    </main>
+
+    <script>
+    (function () {
+        'use strict';
+        var DAY = 86400000;
+        function parse(s) { var p = s.split('-'); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
+        function fmt(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }); }
+        function fmtY(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }); }
+        function el(id) { return document.getElementById(id); }
+        function today() { var n = new Date(); return new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())); }
+        function svgEl(name, attrs) {
+            var e = document.createElementNS('http://www.w3.org/2000/svg', name);
+            for (var k in attrs) e.setAttribute(k, attrs[k]);
+            return e;
+        }
+        function r1(n) { return (Math.round(n * 10) / 10).toString(); }
+
+        fetch('progress.json', { cache: 'no-cache' })
+            .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+            .then(render)
+            .catch(function (e) { if (window.console) console.error(e); el('error').style.display = 'block'; });
+
+        // A part (built, video, posts) is: a date (done), 'planned', or 'skip' (not counted).
+        function partDate(v) { return v && v !== 'planned' && v !== 'skip' ? parse(v) : null; }
+
+        function render(data) {
+            var start = parse(data.start), now = today();
+            var items = data.items.map(function (i) {
+                var all = [i.built, i.video, i.posts, i.doc].filter(function (v) { return v !== 'skip'; });
+                var b = partDate(i.built);
+                return { id: i.id, track: i.track, name: i.name, planned: parse(i.planned), current: !!i.current,
+                         built: b, video: i.video, posts: i.posts, doc: i.doc || 'planned',
+                         links: i.links || {}, catalog: !!i.catalog, n: i.n || 0, blurb: i.blurb || '',
+                         events: b ? [{ date: b, value: 1 }] : [],
+                         full: all.every(function (v) { return partDate(v); }) };
+            });
+            var baseByTrack = data.baselineByTrack || {};
+            var base = data.baseline || 0;
+            var total = base + items.length;
+
+            function plannedBy(d) { return base + items.filter(function (i) { return i.planned <= d; }).length; }
+            function doneBy(d) {
+                return base + items.reduce(function (s, i) {
+                    return s + i.events.reduce(function (t, e) { return t + (e.date <= d ? e.value : 0); }, 0);
+                }, 0);
+            }
+
+            var done = doneBy(now), planned = plannedBy(now);
+            var finishedSince = done - base;
+            var weeks = Math.max((now - start) / (7 * DAY), 0);
+
+            el('s-done').textContent = r1(done) + ' of ' + total;
+            el('s-done-sub').textContent = 'Counts when the README and screenshots prove the build. Fully complete (video, posts, and guide, each with a link): ' + items.filter(function (i) { return i.full; }).length + '.';
+
+            var delta = done - planned;
+            var dEl = el('s-delta');
+            dEl.textContent = Math.abs(delta) < 0.05 ? 'On plan' : (delta > 0 ? '+' + r1(delta) + ' ahead' : r1(Math.abs(delta)) + ' behind');
+            dEl.className = 'value ' + (delta >= 0 ? 'ahead' : 'behind');
+            el('s-delta-sub').textContent = 'plan says ' + r1(planned) + ' by today';
+
+            if (weeks >= 1 && finishedSince > 0) {
+                var pace = finishedSince / weeks;
+                el('s-pace').textContent = r1(pace);
+                var fin = new Date(now.getTime() + ((total - done) / pace) * 7 * DAY);
+                el('s-finish').textContent = fmtY(fin);
+            } else {
+                el('s-pace').textContent = '–';
+                el('s-finish').textContent = 'After first week';
+                el('s-finish-sub').textContent = 'needs a week of data';
+            }
+
+            drawChart(items, base, total, start, now, plannedBy, doneBy);
+            drawBars(data, items, baseByTrack);
+            drawLists(data, items, now);
+            drawCatalog(items);
+            el('updated').textContent = fmtY(parse(data.updated));
+        }
+
+        function drawChart(items, base, total, start, now, plannedBy, doneBy) {
+            var svg = el('chart');
+            var W = 760, H = 320, L = 44, R = 16, T = 14, B = 34;
+            var lastPlan = items.reduce(function (m, i) { return i.planned > m ? i.planned : m; }, start);
+            var end = new Date(lastPlan.getTime() + 7 * DAY);
+            var span = end - start;
+            function x(d) { return L + (d - start) / span * (W - L - R); }
+            function y(v) { return T + (1 - v / total) * (H - T - B); }
+
+            for (var g = 0; g <= 4; g++) {
+                var v = Math.round(total * g / 4);
+                svg.appendChild(svgEl('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: '#e3e8ee', 'stroke-width': 1 }));
+                var t = svgEl('text', { x: L - 8, y: y(v) + 4, 'text-anchor': 'end', 'font-size': 11, fill: '#566573' });
+                t.textContent = v; svg.appendChild(t);
+            }
+            var m = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+            while (m < end) {
+                var tx = x(m);
+                svg.appendChild(svgEl('line', { x1: tx, x2: tx, y1: T, y2: H - B, stroke: '#f0f3f7', 'stroke-width': 1 }));
+                var lb = svgEl('text', { x: tx, y: H - B + 18, 'text-anchor': 'middle', 'font-size': 11, fill: '#566573' });
+                lb.textContent = m.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+                svg.appendChild(lb);
+                m = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1));
+            }
+
+            function stepPath(dates, finalDate, valueAt) {
+                var d = 'M' + x(start) + ' ' + y(valueAt(start));
+                var prev = valueAt(start);
+                dates.forEach(function (e) {
+                    d += ' L' + x(e) + ' ' + y(prev);
+                    prev = valueAt(e);
+                    d += ' L' + x(e) + ' ' + y(prev);
+                });
+                d += ' L' + x(finalDate) + ' ' + y(prev);
+                return d;
+            }
+            var planDates = items.map(function (i) { return i.planned; }).sort(function (a, b) { return a - b; });
+            svg.appendChild(svgEl('path', { d: stepPath(planDates, end, plannedBy), fill: 'none', stroke: '#8a97a6', 'stroke-width': 2.5, 'stroke-dasharray': '6 5' }));
+
+            var doneDates = [];
+            items.forEach(function (i) { i.events.forEach(function (e) { if (e.date <= now) doneDates.push(e.date); }); });
+            doneDates.sort(function (a, b) { return a - b; });
+            svg.appendChild(svgEl('path', { d: stepPath(doneDates, now, doneBy), fill: 'none', stroke: '#0078d4', 'stroke-width': 3 }));
+
+            var tdx = x(now);
+            svg.appendChild(svgEl('line', { x1: tdx, x2: tdx, y1: T, y2: H - B, stroke: '#0078d4', 'stroke-width': 1, 'stroke-dasharray': '2 3' }));
+            var tl = svgEl('text', { x: Math.min(tdx + 6, W - 50), y: T + 12, 'font-size': 11, fill: '#0078d4' });
+            tl.textContent = 'Today';
+            svg.appendChild(tl);
+            svg.appendChild(svgEl('circle', { cx: tdx, cy: y(doneBy(now)), r: 5, fill: '#0078d4', stroke: '#fff', 'stroke-width': 2 }));
+        }
+
+        function drawBars(data, items, baseByTrack) {
+            var box = el('bars');
+            Object.keys(data.tracks).forEach(function (key) {
+                var list = items.filter(function (i) { return i.track === key; });
+                var b = baseByTrack[key] || 0;
+                var n = b + list.reduce(function (s, i) { return s + i.events.reduce(function (t, e) { return t + e.value; }, 0); }, 0);
+                var tot = b + list.length;
+                var row = document.createElement('div'); row.className = 'bar-row';
+                var name = document.createElement('div'); name.textContent = data.tracks[key];
+                var bar = document.createElement('div'); bar.className = 'bar';
+                bar.setAttribute('role', 'progressbar');
+                bar.setAttribute('aria-valuemin', 0); bar.setAttribute('aria-valuemax', tot); bar.setAttribute('aria-valuenow', r1(n));
+                bar.setAttribute('aria-label', data.tracks[key] + ' progress');
+                var fill = document.createElement('div'); fill.className = 'bar-fill'; fill.style.width = (tot ? n / tot * 100 : 0) + '%';
+                bar.appendChild(fill);
+                var cnt = document.createElement('div'); cnt.className = 'bar-count'; cnt.textContent = r1(n) + ' / ' + tot;
+                row.appendChild(name); row.appendChild(bar); row.appendChild(cnt);
+                box.appendChild(row);
+            });
+        }
+
+        function isDone(v) { return v && v !== 'planned' && v !== 'skip'; }
+
+        function badge(label, v, href) {
+            var done = isDone(v);
+            var b = (href && done) ? document.createElement('a') : document.createElement('span');
+            if (b.tagName === 'A') {
+                b.href = href;
+                b.target = '_blank';
+                b.rel = 'noopener noreferrer';
+            }
+            b.className = 'badge' + (v === 'skip' ? ' skip' : (done ? ' on' : ''));
+            b.textContent = label;
+            b.title = label + (v === 'skip' ? ': not planned' : (done ? (href ? ': open' : ': done') : ': planned'));
+            return b;
+        }
+
+        function itemBadges(item) {
+            var bs = document.createElement('span'); bs.className = 'badges';
+            var L = item.links || {};
+            bs.appendChild(badge('Built', item.built ? 'x' : 'planned', L.github));
+            bs.appendChild(badge('Video', item.video, L.video));
+            bs.appendChild(badge('Posts', item.posts, L.linkedin));
+            bs.appendChild(badge('Guide', item.doc, L.guide));
+            if (L.live) bs.appendChild(badge('Live', 'x', L.live));
+            return bs;
+        }
+
+        function li(item, trackName, tagText, tagClass, dateOf) {
+            var li = document.createElement('li');
+            var d = document.createElement('span'); d.className = 'date'; d.textContent = fmt(dateOf || item.planned);
+            var n = document.createElement('span'); n.textContent = trackName + ': ' + item.name;
+            n.appendChild(itemBadges(item));
+            var t = document.createElement('span'); t.className = 'tag ' + tagClass; t.textContent = tagText;
+            li.appendChild(d); li.appendChild(n); li.appendChild(t);
+            return li;
+        }
+
+        function chip(label, href) {
+            if (!href) {
+                var s = document.createElement('span');
+                s.className = 'chip off';
+                s.textContent = label;
+                return s;
+            }
+            var a = document.createElement('a');
+            a.className = 'chip';
+            a.href = href;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.textContent = label;
+            return a;
+        }
+
+        function drawCatalog(items) {
+            var box = el('catalog');
+            if (!box) return;
+            var list = items.filter(function (i) { return i.catalog; }).sort(function (a, b) { return a.n - b.n; });
+            list.forEach(function (i) {
+                var card = document.createElement('article');
+                card.className = 'project-card';
+                var h = document.createElement('h3');
+                h.textContent = i.name;
+                card.appendChild(h);
+                if (i.blurb) {
+                    var p = document.createElement('p');
+                    p.className = 'blurb';
+                    p.textContent = i.blurb;
+                    card.appendChild(p);
+                }
+                card.appendChild(itemBadges(i));
+                var chips = document.createElement('div');
+                chips.className = 'chips';
+                chips.style.marginTop = '10px';
+                var L = i.links || {};
+                if (L.github) chips.appendChild(chip('GitHub', L.github));
+                if (isDone(i.video) && L.video) chips.appendChild(chip('Walkthrough', L.video));
+                if (isDone(i.doc) && L.guide) chips.appendChild(chip('Guide', L.guide));
+                if (isDone(i.posts) && L.linkedin) chips.appendChild(chip('LinkedIn', L.linkedin));
+                if (L.live) chips.appendChild(chip('Live site', L.live));
+                card.appendChild(chips);
+                box.appendChild(card);
+            });
+        }
+
+        function drawLists(data, items, now) {
+            var up = el('upcoming'), rc = el('recent');
+            var horizon = new Date(now.getTime() + 14 * DAY);
+            var open = items.filter(function (i) { return !i.full; });
+            var upcoming = open.filter(function (i) { return i.current || (!i.built && i.planned <= horizon); })
+                .sort(function (a, b) { return a.planned - b.planned; }).slice(0, 6);
+            if (!upcoming.length) upcoming = open.filter(function (i) { return !i.built; }).sort(function (a, b) { return a.planned - b.planned; }).slice(0, 3);
+            upcoming.forEach(function (i) {
+                up.appendChild(li(i, data.tracks[i.track], i.current ? 'In progress' : 'Planned', i.current ? 'now' : ''));
+            });
+            open.filter(function (i) { return i.built && !i.current; }).sort(function (a, b) { return a.built - b.built; }).forEach(function (i) {
+                up.appendChild(li(i, data.tracks[i.track], 'Needs video, posts or guide', 'now', i.built));
+            });
+            var built = items.filter(function (i) { return i.built; }).sort(function (a, b) { return b.built - a.built; }).slice(0, 5);
+            if (!built.length) {
+                var e = document.createElement('li');
+                e.style.gridTemplateColumns = '1fr';
+                e.textContent = 'Tracking started ' + fmtY(parse(data.start)) + '. ' + data.baselineNote;
+                rc.appendChild(e);
+            }
+            built.forEach(function (i) { rc.appendChild(li(i, data.tracks[i.track], i.full ? 'Done' : 'Built', 'done', i.built)); });
+        }
+    })();
+    </script>
+</body>
+</html>
