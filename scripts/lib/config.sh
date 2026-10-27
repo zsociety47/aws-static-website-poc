@@ -8,6 +8,7 @@
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 PROJECT_TAG="01-aws-static-website-poc"
+# Change this if you are not zeon. The deploy script writes it on the bucket.
 OWNER_TAG="zeon"
 LIFETIME_TAG="1d"
 ENVIRONMENT_TAG="poc"

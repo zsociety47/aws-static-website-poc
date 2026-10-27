@@ -20,7 +20,9 @@ The pages live in a private Simple Storage Service (S3) bucket. Visitors reach t
 | Bucket | the name in `.env` |
 | Tags | `lifetime=1d`, `owner=zeon`, `project=01-aws-static-website-poc`, `environment=poc`, and `created` |
 
-Copy `.env.example` to `.env` before any script runs. `.env` is not committed.
+### Run this as yourself
+
+Copy `.env.example` to `.env` before any script runs. `.env` is not committed. Change `BUCKET_NAME` so it is yours, not `zeon01`. Bucket names must be unique on Amazon Web Services. Change `OWNER_TAG` in `scripts/lib/config.sh` so the bucket is not tagged as mine.
 
 ## Later phase, still part of this project
 
