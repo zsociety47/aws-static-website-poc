@@ -2,7 +2,7 @@
 
 A small business needs a fast, cheap, secure website with HTTPS (HTTP Secure), its own name, no servers to maintain, and almost no monthly cost.
 
-**Status:** skeleton only. No AWS resources have been created. The full walkthrough, screenshots, and verification record come after the deploy.
+**Status:** the private bucket, Origin Access Control, and the security-headers policy exist. CloudFront did not. AWS refused the distribution until the account is verified. Re-run `./scripts/deploy.sh` after that. It reuses what is already there. The full walkthrough and screenshots come after the site is up.
 
 Part of [Cloud Projects](https://github.com/zsociety47/cloud-projects).
 
@@ -30,9 +30,11 @@ A keyless deploy from GitHub is in scope and is not built yet. GitHub Actions wi
 
 ```
 site/                     the same tracker pages as the Azure and Google Cloud proofs
+scripts/deploy.sh         creates the bucket, Origin Access Control, and CloudFront, then uploads site/
+scripts/www-redirect.js   sends www to the apex once a domain exists
 scripts/lib/config.sh     loads .env, requires a profile, masks account ids
 .env.example              the names. Copy to .env
 docs/later-github-deploy.md
 ```
 
-`deploy.sh` and `verify.sh` are next. They are not in this commit.
+`verify.sh` is next, after CloudFront exists.
