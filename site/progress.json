@@ -119,7 +119,7 @@
    "built": null,
    "video": "planned",
    "posts": "planned",
-   "current": true,
+   "current": false,
    "doc": "planned",
    "catalog": true,
    "n": 7,
@@ -434,13 +434,19 @@
   {
    "id": "gcp-projects-2",
    "track": "gcp-labs",
+   "catalog": true,
+   "n": 2,
    "name": "Project 2: Two-tier network",
    "planned": "2026-10-25",
    "built": null,
-   "video": "skip",
-   "posts": "skip",
-   "current": false,
-   "doc": "planned"
+   "video": "planned",
+   "posts": "planned",
+   "current": true,
+   "doc": "planned",
+   "links": {
+    "github": "https://github.com/zsociety47/gcp-two-tier-network-poc"
+   },
+   "blurb": "A database with no public address, reachable only from the web tier. The plan is in the repository. Nothing is deployed yet."
   },
   {
    "id": "gcp-projects-3",

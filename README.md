@@ -1,14 +1,14 @@
 # AWS Static Website Proof of Concept
 
-A small business needs a fast, cheap, secure website with HTTPS (HTTP Secure), its own name, no servers to maintain, and almost no monthly cost.
+A small business needs a fast, cheap, secure website with Hypertext Transfer Protocol Secure (HTTPS), its own name, no servers to maintain, and almost no monthly cost.
 
-**Status:** the private bucket, Origin Access Control, and the security-headers policy exist. CloudFront did not. AWS refused the distribution until the account is verified. Re-run `./scripts/deploy.sh` after that. It reuses what is already there. The full walkthrough and screenshots come after the site is up.
+**Status:** the private bucket, the Origin Access Control, and the security-headers policy are in place. CloudFront isn't, because AWS refused to create the distribution until my account is verified. Once it is, re-run `./scripts/deploy.sh`; it reuses everything that's already there. The full walkthrough and screenshots will come after the site is up.
 
 Part of [Cloud Projects](https://github.com/zsociety47/cloud-projects).
 
 ## What this pass will prove
 
-The pages live in a private Simple Storage Service (S3) bucket. Visitors reach them through CloudFront, Amazon's content delivery network, using Origin Access Control (OAC). The bucket is not public. The first deploy stops at the CloudFront hostname. A custom domain is added only after the domain is bought in the Route 53 console and a hosted zone already exists. The apex name will be the real site, and `www` will redirect to it.
+The pages live in a private Simple Storage Service (S3) bucket. Visitors reach them through CloudFront, Amazon's content delivery network, using Origin Access Control (OAC). The bucket isn't public. The first deploy stops at the CloudFront hostname. A custom domain is added only after the domain is bought in the Route 53 console and a hosted zone already exists. The apex name will be the real site, and `www` will redirect to it.
 
 ## Names
 
@@ -22,11 +22,11 @@ The pages live in a private Simple Storage Service (S3) bucket. Visitors reach t
 
 ### Run this as yourself
 
-Copy `.env.example` to `.env` before any script runs. `.env` is not committed. Change `BUCKET_NAME` so it is yours, not `zeon01`. Bucket names must be unique on Amazon Web Services. Change `OWNER_TAG` in `scripts/lib/config.sh` so the bucket is not tagged as mine.
+Copy `.env.example` to `.env` before any script runs. `.env` isn't committed. Change `BUCKET_NAME` to use your own short name and a number instead of `zeon01`. Bucket names have to be unique across all of Amazon Web Services. Also change `OWNER_TAG` in `scripts/lib/config.sh` so the bucket isn't tagged as mine.
 
 ## Later phase, still part of this project
 
-A keyless deploy from GitHub is in scope and is not built yet. GitHub Actions will assume an Identity and Access Management (IAM) role with OpenID Connect. No access key will be stored in GitHub. The trust rule will use the exact token subject GitHub prints, including the numeric owner and repository ids. See [docs/later-github-deploy.md](docs/later-github-deploy.md).
+A keyless deploy from GitHub is in scope and isn't built yet. GitHub Actions will assume an Identity and Access Management (IAM) role with OpenID Connect. No access key will be stored in GitHub. The trust rule will use the exact token subject GitHub prints, including the numeric owner and repository ids. See [docs/later-github-deploy.md](docs/later-github-deploy.md).
 
 ## What is here now
 
