@@ -22,7 +22,16 @@ The pages live in a private Simple Storage Service (S3) bucket. Visitors reach t
 
 ### Run this as yourself
 
-Copy `.env.example` to `.env` before any script runs. `.env` isn't committed. Change `BUCKET_NAME` to use your own short name and a number instead of `zeon01`. Bucket names have to be unique across all of Amazon Web Services. Also change `OWNER_TAG` in `scripts/lib/config.sh` so the bucket isn't tagged as mine.
+The names committed in this repository are this proof of concept. Leave them. Put your owner word in the copy you run. Bucket names must be unique across Amazon Web Services.
+
+| Open this | Do this |
+|---|---|
+| [`.env.example`](.env.example) | Copy to `.env` (gitignored) before any script runs. Replace `yourname01` in `BUCKET_NAME`. |
+| [`scripts/lib/config.sh`](scripts/lib/config.sh) | Change `OWNER_TAG` so the bucket is not tagged as mine. |
+
+```bash
+cp .env.example .env
+```
 
 ## Later phase, still part of this project
 
